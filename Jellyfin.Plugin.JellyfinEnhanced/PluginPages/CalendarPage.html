@@ -1,0 +1,39 @@
+<div id="je-loading">Loading…</div>
+<div id="je-calendar-container"></div>
+<div id="je-error" style="display:none">
+  Jellyfin Enhanced not ready.
+</div>
+<script>
+(function () {
+  const MAX_WAIT = 5000;
+  const INTERVAL = 50;
+  let waited = 0;
+
+  const loadingEl = document.getElementById("je-loading");
+  const errorEl = document.getElementById("je-error");
+
+  const JE = window.JellyfinEnhanced;
+
+  const timer = setInterval(() => {
+
+    if (JE && JE.calendarPage) {
+      clearInterval(timer);
+
+      loadingEl.remove();
+      JE.calendarPage.injectStyles();
+      JE.calendarPage.loadSettings();
+      JE.calendarPage.renderPage();
+      JE.calendarPage.refresh()
+      return;
+    }
+
+    waited += INTERVAL;
+    if (waited >= MAX_WAIT) {
+      clearInterval(timer);
+
+      loadingEl.style.display = "none";
+      errorEl.style.display = "block";
+    }
+  }, INTERVAL);
+})();
+</script>
