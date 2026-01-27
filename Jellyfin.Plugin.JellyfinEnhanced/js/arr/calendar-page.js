@@ -16,7 +16,7 @@
     pageVisible: false,
     previousPage: null,
     currentDate: new Date(),
-    viewMode: "month",
+    viewMode: getDefaultViewMode(),
     rangeStart: null,
     rangeEnd: null,
     settings: {
@@ -356,32 +356,31 @@
       margin: -0.5em;
     }
 
-    .je-calendar-agenda-event.je-has-file .je-available-indicator {
-      color: #4caf50;
-      font-size: 20px;
+    .je-calendar-agenda-indicators {
+      display: flex;
+      align-items: center;
+      gap: 0.25em;
+      min-width: 70px;
       flex-shrink: 0;
     }
 
-    .je-available-indicator-placeholder {
-      width: 20px;
-      flex-shrink: 0;
+    .je-calendar-agenda-event.je-has-file .je-available-indicator {
+      color: #4caf50;
+      font-size: 20px;
+    }
+
+    .je-available-indicator {
+      font-size: 20px;
     }
 
     .je-watchlist-indicator-agenda {
       color: #ffd700;
       font-size: 20px;
-      flex-shrink: 0;
     }
 
     .je-watched-indicator-agenda {
       color: #64b5f6;
       font-size: 20px;
-      flex-shrink: 0;
-    }
-
-    .je-indicator-placeholder {
-      width: 20px;
-      flex-shrink: 0;
     }
 
     .je-calendar-agenda-event-marker {
@@ -565,6 +564,22 @@
   const logPrefix = '🪼 Jellyfin Enhanced: Calendar Page:';
 
   /**
+   * Get default view mode based on URL hash or mobile detection
+   */
+  function getDefaultViewMode() {
+    // Check URL hash first (e.g., #/calendar/agenda)
+    const hash = window.location.hash;
+    const viewMatch = hash.match(/#\/calendar\/(month|week|agenda)/);
+    if (viewMatch) {
+      return viewMatch[1];
+    }
+
+    // Default to agenda on mobile, month on desktop
+    const isMobile = window.innerWidth <= 768;
+    return isMobile ? "agenda" : "month";
+  }
+
+  /**
    * Initialize calendar page
    */
   function initialize() {
@@ -607,10 +622,20 @@
     const url = e?.newURL ? new URL(e.newURL) : window.location;
     const hash = url.hash;
     const path = url.pathname;
-    const matches = hash === "#/calendar" || path === "/calendar";
+    const matches = hash.startsWith("#/calendar") || path === "/calendar";
     if (matches) {
       if (e?.stopImmediatePropagation) e.stopImmediatePropagation();
       if (e?.preventDefault) e.preventDefault();
+
+      // Check if view mode changed in URL
+      const viewMatch = hash.match(/#\/calendar\/(month|week|agenda)/);
+      if (viewMatch && viewMatch[1] !== state.viewMode) {
+        state.viewMode = viewMatch[1];
+        if (state.pageVisible) {
+          loadAllData();
+        }
+      }
+
       showPage();
     }
   }
@@ -990,6 +1015,13 @@
   function setViewMode(mode) {
     if (state.viewMode === mode) return;
     state.viewMode = mode;
+
+    // Update URL hash to reflect view mode
+    const newHash = `#/calendar/${mode}`;
+    if (window.location.hash !== newHash) {
+      history.replaceState({ page: "calendar", view: mode }, "Calendar", newHash);
+    }
+
     loadAllData();
   }
 
@@ -1211,22 +1243,23 @@
     const subtitle = event.subtitle || "";
     const timeLabel = formatEventTime(event.releaseDate);
     const hasFileClass = event.hasFile ? " je-has-file" : "";
-    const availableIndicator = event.hasFile
-      ? `<span class="je-available-indicator material-symbols-rounded" title="${window.JellyfinEnhanced.t("jellyseerr_btn_available") || "Available"}">check_circle</span>`
-      : `<span class="je-available-indicator-placeholder"></span>`;
 
     // Get user data indicators
     const userData = state.userDataMap?.get(event.id);
     const isWatchlist = state.settings.highlightFavorites && userData?.isFavorite;
     const isWatched = state.settings.highlightWatchedSeries && userData?.isWatched;
 
-    const watchlistIndicator = isWatchlist
-      ? `<span class="je-watchlist-indicator-agenda material-symbols-rounded" title="Watchlist">bookmark</span>`
-      : `<span class="je-indicator-placeholder"></span>`;
-
-    const watchedIndicator = isWatched
-      ? `<span class="je-watched-indicator-agenda material-symbols-rounded" title="Watched">visibility</span>`
-      : `<span class="je-indicator-placeholder"></span>`;
+    // Build indicators array (only add if they exist)
+    const indicators = [];
+    if (event.hasFile) {
+      indicators.push(`<span class="je-available-indicator material-symbols-rounded" title="${window.JellyfinEnhanced.t("jellyseerr_btn_available") || "Available"}">check_circle</span>`);
+    }
+    if (isWatchlist) {
+      indicators.push(`<span class="je-watchlist-indicator-agenda material-symbols-rounded" title="Watchlist">bookmark</span>`);
+    }
+    if (isWatched) {
+      indicators.push(`<span class="je-watched-indicator-agenda material-symbols-rounded" title="Watched">visibility</span>`);
+    }
 
     // Get material icon based on release type
     let materialIcon = "movie";
@@ -1237,9 +1270,9 @@
 
     return `
       <div class="je-calendar-agenda-event${hasFileClass}" data-event-id="${escapeHtml(event.id)}">
-        ${availableIndicator}
-        ${watchlistIndicator}
-        ${watchedIndicator}
+        <div class="je-calendar-agenda-indicators">
+          ${indicators.join('')}
+        </div>
         <span class="material-symbols-rounded" style="font-size: 20px;">${materialIcon}</span>
         <div class="je-calendar-agenda-event-marker" style="background: ${color};"></div>
         <div class="je-calendar-agenda-event-content">
@@ -1324,7 +1357,7 @@
       page.innerHTML = `
         <div data-role="content">
           <div class="content-primary je-calendar-page">
-            <div id="je-calendar-container" style="padding-top: 5em;"></div>
+            <div id="je-calendar-container" style="padding-top: 5em; padding-left: 0.5em; padding-right: 0.5em;"></div>
           </div>
         </div>
       `;
@@ -1394,8 +1427,9 @@
     injectStyles();
     const page = createPageContainer();
 
-    if (window.location.hash !== "#/calendar") {
-      history.pushState({ page: "calendar" }, "Calendar", "#/calendar");
+    const expectedHash = `#/calendar/${state.viewMode}`;
+    if (window.location.hash !== expectedHash && !window.location.hash.startsWith("#/calendar/")) {
+      history.pushState({ page: "calendar", view: state.viewMode }, "Calendar", expectedHash);
     }
 
     const activePage = document.querySelector(".mainAnimatedPage:not(.hide):not(#je-calendar-page)");
@@ -1475,7 +1509,15 @@
   function handleNavigation() {
     const hash = window.location.hash;
     const path = window.location.pathname;
-    if (hash === "#/calendar" || path === "/calendar") {
+    if (hash.startsWith("#/calendar") || path === "/calendar") {
+      // Check if view mode changed in URL
+      const viewMatch = hash.match(/#\/calendar\/(month|week|agenda)/);
+      if (viewMatch && viewMatch[1] !== state.viewMode) {
+        state.viewMode = viewMatch[1];
+        if (state.pageVisible) {
+          loadAllData();
+        }
+      }
       showPage();
     } else if (state.pageVisible) {
       hidePage();
