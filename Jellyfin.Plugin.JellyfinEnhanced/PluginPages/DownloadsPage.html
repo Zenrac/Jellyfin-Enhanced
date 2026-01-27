@@ -24,6 +24,7 @@
       JE.downloadsPage.renderPage();
       JE.downloadsPage.refresh();
       startPolling();
+      handleClickOnPlay();
       return;
     }
 
@@ -54,6 +55,23 @@ function startPolling() {
       JE.downloadsPage.refresh();
     }
   }, POLL_INTERVAL);
+}
+
+function handleClickOnPlay() {
+  if (handleClickOnPlay._initialized) return;
+  handleClickOnPlay._initialized = true;
+
+  document.addEventListener("click", (e) => {
+    const playBtn = e.target.closest(".je-request-watch-btn");
+    if (!playBtn) return;
+
+    e.preventDefault();
+
+    const mediaId = playBtn.getAttribute("data-media-id");
+    if (mediaId && window.Emby?.Page?.showItem) {
+      window.Emby.Page.showItem(mediaId);
+    }
+  });
 }
 </script>
 
