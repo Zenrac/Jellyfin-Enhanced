@@ -347,7 +347,8 @@
     "discovery_more_with_tag": "Еще с тегом - \"{tag}\"",
     "discovery_more_from_person": "Еще с {person}",
     "jellyseerr_active_downloads": "Активные загрузки",
-    "jellyseerr_requests": "Запросы",
+    "requests_requests": "Запросы",
+    "requests_no_active_downloads": "Нет активных загрузок",
     "calendar_title": "Календарь",
     "calendar_today": "Сегодня",
     "calendar_month": "Месяц",
@@ -359,5 +360,7 @@
     "calendar_episode": "Эпизод",
     "calendar_series": "Сериалы",
     "calendar_loading": "Загрузка календаря...",
-    "calendar_no_releases": "Нет предстоящих релизов"
+    "calendar_no_releases": "Нет предстоящих релизов",
+    "calendar_watchlist": "Список отслеживания",
+    "calendar_watched": "Просмотрено"
 }

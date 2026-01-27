@@ -347,7 +347,8 @@
     "discovery_more_with_tag": "Mer med taggen - \"{tag}\"",
     "discovery_more_from_person": "Mer med {person}",
     "jellyseerr_active_downloads": "Aktiva hämtningar",
-    "jellyseerr_requests": "Förfrågningar",
+    "requests_requests": "Förfrågningar",
+    "requests_no_active_downloads": "Inga aktiva hämtningar",
     "calendar_title": "Kalender",
     "calendar_today": "Idag",
     "calendar_month": "Månad",
@@ -359,5 +360,7 @@
     "calendar_episode": "Avsnitt",
     "calendar_series": "Serier",
     "calendar_loading": "Laddar kalender...",
-    "calendar_no_releases": "Inga kommande släpp"
+    "calendar_no_releases": "Inga kommande utgåvor",
+    "calendar_watchlist": "Bevakningslista",
+    "calendar_watched": "Sedd"
 }

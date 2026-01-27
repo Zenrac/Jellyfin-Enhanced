@@ -347,7 +347,8 @@
     "discovery_more_with_tag": "Więcej ze znacznikiem - \"{tag}\"",
     "discovery_more_from_person": "Więcej z {person}",
     "jellyseerr_active_downloads": "Aktywne pobrania",
-    "jellyseerr_requests": "Żądania",
+    "requests_requests": "Żądania",
+    "requests_no_active_downloads": "Brak aktywnych pobrań",
     "calendar_title": "Kalendarz",
     "calendar_today": "Dziś",
     "calendar_month": "Miesiąc",
@@ -359,5 +360,7 @@
     "calendar_episode": "Odcinek",
     "calendar_series": "Seriale",
     "calendar_loading": "Ładowanie kalendarza...",
-    "calendar_no_releases": "Brak nadchodzących premier"
+    "calendar_no_releases": "Brak nadchodzących premier",
+    "calendar_watchlist": "Lista obserwowanych",
+    "calendar_watched": "Obejrzane"
 }

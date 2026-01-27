@@ -16,23 +16,29 @@
     pollTimer: null,
     pageVisible: false,
     previousPage: null,
+    locationSignature: null,
+    locationTimer: null,
   };
 
-  // Status color mapping - using CSS variables with fallbacks
-  const STATUS_COLORS = {
-    Downloading: "var(--theme-primary-color, #00a4dc)",
-    Importing: "#4caf50",
-    Queued: "rgba(128,128,128,0.6)",
-    Paused: "#ff9800",
-    Delayed: "#ff9800",
-    Warning: "#ff9800",
-    Failed: "#f44336",
-    Unknown: "rgba(128,128,128,0.5)",
-    Pending: "#ff9800",
-    Processing: "var(--theme-primary-color, #00a4dc)",
-    Available: "#4caf50",
-    Approved: "#4caf50",
-    Declined: "#f44336",
+  // Status color mapping - using theme-aware colors
+  const getStatusColors = () => {
+    const themeVars = JE.themer?.getThemeVariables() || {};
+    const primaryAccent = themeVars.primaryAccent || '#00a4dc';
+    return {
+      Downloading: primaryAccent,
+      Importing: "#4caf50",
+      Queued: "rgba(128,128,128,0.6)",
+      Paused: "#ff9800",
+      Delayed: "#ff9800",
+      Warning: "#ff9800",
+      Failed: "#f44336",
+      Unknown: "rgba(128,128,128,0.5)",
+      Pending: "#ff9800",
+      Processing: primaryAccent,
+      Available: "#4caf50",
+      Approved: "#4caf50",
+      Declined: "#f44336",
+    };
   };
 
   const SONARR_ICON_URL = "https://cdn.jsdelivr.net/gh/selfhst/icons/svg/sonarr.svg";
@@ -178,8 +184,6 @@
             background: rgba(255,255,255,0.1);
         }
         .je-requests-tab.emby-button.active {
-            background: var(--theme-primary-color, #00a4dc);
-            border-color: var(--theme-primary-color, #00a4dc);
             opacity: 1;
         }
         .je-request-card {
@@ -234,7 +238,6 @@
             margin-top: 1em;
         }
         .je-request-watch-btn {
-          background: var(--theme-primary-color, #00a4dc);
           color: inherit;
           border: none;
           padding: 0.45em;
@@ -310,6 +313,35 @@
     style.id = "je-downloads-styles";
     style.textContent = CSS_STYLES;
     document.head.appendChild(style);
+
+    // Inject dynamic theme colors
+    injectThemeColors();
+  }
+
+  /**
+   * Inject dynamic theme colors
+   */
+  function injectThemeColors() {
+    const existingThemeStyle = document.getElementById("je-downloads-theme-colors");
+    if (existingThemeStyle) {
+      existingThemeStyle.remove();
+    }
+
+    const themeVars = JE.themer?.getThemeVariables() || {};
+    const primaryAccent = themeVars.primaryAccent || '#00a4dc';
+
+    const themeStyle = document.createElement("style");
+    themeStyle.id = "je-downloads-theme-colors";
+    themeStyle.textContent = `
+      .je-requests-tab.emby-button.active {
+        background: ${primaryAccent} !important;
+        border-color: ${primaryAccent} !important;
+      }
+      .je-request-watch-btn {
+        background: ${primaryAccent} !important;
+      }
+    `;
+    document.head.appendChild(themeStyle);
   }
 
   /**
@@ -502,6 +534,7 @@
    * Render a download card
    */
   function renderDownloadCard(item) {
+    const STATUS_COLORS = getStatusColors();
     const statusColor = STATUS_COLORS[item.status] || STATUS_COLORS.Unknown;
     const sourceIcon = item.source === "sonarr" ? SONARR_ICON_URL : RADARR_ICON_URL;
     const sourceLabel = item.source === "sonarr" ? "Sonarr" : "Radarr";
@@ -563,7 +596,7 @@
     if (item.jellyfinMediaId && (item.mediaStatus === "Available" || item.mediaStatus === "Partially Available")) {
       const playLabel = JE.t?.("jellyseerr_btn_available") || "Available";
       const playIcon = '<span class="material-icons">play_arrow</span>';
-      watchButton = `<button class="je-request-watch-btn" title="${playLabel}" aria-label="${playLabel}" onclick="Emby.Page.showItem('${item.jellyfinMediaId}')">${playIcon}</button>`;
+      watchButton = `<button class="je-request-watch-btn" title="${playLabel}" aria-label="${playLabel}" data-media-id="${item.jellyfinMediaId}">${playIcon}</button>`;
     }
 
     return `
@@ -649,6 +682,7 @@
    * Render a season pack card (collapsed view of multiple episodes)
    */
   function renderSeasonPackCard(group) {
+    const STATUS_COLORS = getStatusColors();
     const item = group.item;
     const statusColor = STATUS_COLORS[item.status] || STATUS_COLORS.Unknown;
 
@@ -715,9 +749,10 @@
     if (state.isLoading && state.downloads.length === 0) {
       html += `<div class="je-loading">Loading...</div>`;
     } else if (state.downloads.length === 0) {
+      const labelNoActiveDownloads = (JE.t && JE.t('requests_no_active_downloads')) || 'No active downloads';
       html += `
         <div class="je-empty-state">
-          <div>No active downloads</div>
+          <div>${labelNoActiveDownloads}</div>
         </div>
       `;
     } else {
@@ -739,7 +774,7 @@
     // Requests Section
     if (JE.pluginConfig?.JellyseerrEnabled) {
       html += `<div class="je-downloads-section">`;
-      const labelRequests = (JE.t && JE.t('jellyseerr_requests')) || 'Requests';
+      const labelRequests = (JE.t && JE.t('requests_requests')) || 'Requests';
       html += `<h2>${labelRequests}</h2>`;
 
         // Filter tabs
@@ -802,6 +837,7 @@
       // Data attributes for header/back button integration
       page.setAttribute("data-title", "Requests");
       page.setAttribute("data-backbutton", "true");
+      page.setAttribute("data-url", "#/downloads");
       page.setAttribute("data-type", "custom");
       page.innerHTML = `
         <div data-role="content">
@@ -827,11 +863,18 @@
   function showPage() {
     if (state.pageVisible) return;
 
+    state.pageVisible = true;
+
     // Ensure page exists first
     const page = createPageContainer();
     if (!page) {
       console.error(`${logPrefix} Failed to create page container`);
+      state.pageVisible = false;
       return;
+    }
+
+    if (window.location.hash !== "#/downloads") {
+      history.pushState({ page: "downloads" }, "Requests", "#/downloads");
     }
 
     // Hide other Jellyfin pages - but track which one was active so we can restore it
@@ -852,12 +895,6 @@
 
     // Show our page
     page.classList.remove("hide");
-    state.pageVisible = true;
-
-    // Update URL for back button support
-    if (window.location.hash !== "#/downloads") {
-      history.pushState({ page: "downloads" }, "Requests", "#/downloads");
-    }
 
     // Dispatch viewshow event so Jellyfin's libraryMenu updates header/back button
     page.dispatchEvent(
@@ -882,8 +919,11 @@
       }),
     );
 
-    loadAllData();
-    startPolling();
+    // Only load data once (guard against showPage retries)
+    if (!state.isLoading) {
+      loadAllData();
+      startPolling();
+    }
   }
 
   /**
@@ -927,6 +967,7 @@
     state.pageVisible = false;
     state.previousPage = null;
     stopPolling();
+    stopLocationWatcher();
   }
 
   /**
@@ -1002,10 +1043,11 @@
       navItem.setAttribute('is', 'emby-linkbutton');
       navItem.className =
         "navMenuOption lnkMediaFolder emby-button je-nav-downloads-item";
-      navItem.href = "#/downloads";
+      navItem.href = "#";
+      const labelRequests = (JE.t && JE.t('requests_requests')) || 'Requests';
       navItem.innerHTML = `
         <span class="navMenuOptionIcon material-icons">download</span>
-        <span class="sectionName navMenuOptionText">Requests</span>
+        <span class="sectionName navMenuOptionText">${labelRequests}</span>
       `;
       navItem.addEventListener("click", (e) => {
         e.preventDefault();
@@ -1050,9 +1092,13 @@
    */
   function handleNavigation() {
     const hash = window.location.hash;
-    if (hash === "#/downloads") {
+    const path = window.location.pathname;
+    if (hash === "#/downloads" || path === "/downloads") {
+      console.log(`${logPrefix} handleNavigation matched downloads (hash=${hash} path=${path})`);
+      // Show page to win races against Jellyfin's router rendering 404
       showPage();
     } else if (state.pageVisible) {
+      console.log(`${logPrefix} handleNavigation hiding page (hash=${hash} path=${path})`);
       hidePage();
     }
   }
@@ -1076,9 +1122,15 @@
     injectNavigation();
     setupNavigationWatcher();
 
+    // Intercept router changes before Jellyfin handles them
+    window.addEventListener("hashchange", interceptNavigation, true);
+    window.addEventListener("popstate", interceptNavigation, true);
+
     // Listen for hash changes - handles browser back/forward and direct URL changes
     window.addEventListener("hashchange", handleNavigation);
     window.addEventListener("popstate", handleNavigation);
+
+    startLocationWatcher();
 
     // Listen for Jellyfin's viewshow events - hide our page when other pages show
     document.addEventListener("viewshow", (e) => {
@@ -1099,6 +1151,19 @@
       (e) => {
         if (!state.pageVisible) return;
 
+        // Handle play button clicks
+        const playBtn = e.target.closest(".je-request-watch-btn");
+        if (playBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          const mediaId = playBtn.getAttribute("data-media-id");
+          if (mediaId && window.Emby?.Page?.showItem) {
+            window.Emby.Page.showItem(mediaId);
+          }
+          return;
+        }
+
         const btn = e.target.closest(
           ".headerTabs button, .navMenuOption, .headerButton",
         );
@@ -1115,6 +1180,41 @@
     handleNavigation();
 
     console.log(`${logPrefix} Downloads page module initialized`);
+  }
+
+  /**
+   * Intercept hash/popstate changes for our route before Jellyfin router
+   */
+  function interceptNavigation(e) {
+    const url = e?.newURL ? new URL(e.newURL) : window.location;
+    const hash = url.hash;
+    const path = url.pathname;
+    const matches = hash === "#/downloads" || path === "/downloads";
+    if (matches) {
+      if (e?.stopImmediatePropagation) e.stopImmediatePropagation();
+      if (e?.preventDefault) e.preventDefault();
+      showPage();
+    }
+  }
+
+  // Poll location because Jellyfin's router uses pushState (no popstate/hashchange fired for pushState)
+  function startLocationWatcher() {
+    if (state.locationTimer) return;
+    state.locationSignature = `${window.location.pathname}${window.location.hash}`;
+    state.locationTimer = setInterval(() => {
+      const signature = `${window.location.pathname}${window.location.hash}`;
+      if (signature !== state.locationSignature) {
+        state.locationSignature = signature;
+        handleNavigation();
+      }
+    }, 150);
+  }
+
+  function stopLocationWatcher() {
+    if (state.locationTimer) {
+      clearInterval(state.locationTimer);
+      state.locationTimer = null;
+    }
   }
 
   // Export to JE namespace
