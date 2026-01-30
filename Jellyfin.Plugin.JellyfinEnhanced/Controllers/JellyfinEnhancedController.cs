@@ -2684,9 +2684,14 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
             foreach (var evt in events)
             {
                 var providers = new List<(string Provider, string Value)>();
-                if (evt.TvdbId.HasValue) providers.Add(("Tvdb", evt.TvdbId.Value.ToString()));
-                if (evt.TmdbId.HasValue) providers.Add(("Tmdb", evt.TmdbId.Value.ToString()));
-                if (!string.IsNullOrWhiteSpace(evt.ImdbId)) providers.Add(("Imdb", evt.ImdbId));
+
+                var tvdb = evt.EpisodeTvdbId?.ToString() ?? evt.TvdbId?.ToString();
+                var tmdb = evt.TmdbId?.ToString();
+                var imdb = !string.IsNullOrWhiteSpace(evt.EpisodeImdbId) ? evt.EpisodeImdbId : evt.ImdbId;
+
+                if (tvdb != null) providers.Add(("Tvdb", tvdb));
+                if (tmdb != null) providers.Add(("Tmdb", tmdb));
+                if (!string.IsNullOrWhiteSpace(imdb)) providers.Add(("Imdb", imdb));
 
                 evt.ItemId = ItemIdHelper.GetBestItemId(providers, itemMap);
             }
