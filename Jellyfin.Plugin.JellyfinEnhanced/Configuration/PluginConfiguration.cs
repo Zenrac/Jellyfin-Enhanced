@@ -167,6 +167,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Configuration
             // Calendar Page Settings (Sonarr/Radarr Releases)
             CalendarPageEnabled = false;
             CalendarUsePluginPages = false;
+            CalendarDefaultViewMode = "auto";
             CalendarFirstDayOfWeek = "Monday";
             CalendarTimeFormat = "5pm/5:30pm";
             CalendarHighlightFavorites = false;
@@ -311,6 +312,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Configuration
         // Calendar Page Settings (Sonarr/Radarr Releases)
         public bool CalendarPageEnabled { get; set; }
         public bool CalendarUsePluginPages { get; set; }
+        public string CalendarDefaultViewMode { get; set; }
         public string CalendarFirstDayOfWeek { get; set; }
         public string CalendarTimeFormat { get; set; }
         public bool CalendarHighlightFavorites { get; set; }

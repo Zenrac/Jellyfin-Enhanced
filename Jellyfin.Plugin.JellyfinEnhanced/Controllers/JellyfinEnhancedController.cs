@@ -1420,6 +1420,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
                 config.CalendarUsePluginPages,
                 config.CalendarFirstDayOfWeek,
                 config.CalendarTimeFormat,
+                config.CalendarDefaultViewMode,
                 config.CalendarHighlightFavorites,
                 config.CalendarHighlightWatchedSeries,
 

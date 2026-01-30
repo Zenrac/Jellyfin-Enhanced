@@ -914,6 +914,15 @@
                                     <option value="17:00/17:30">17:00/17:30</option>
                                 </select>
                             </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="calendarDefaultViewMode">Default View</label>
+                                <select id="calendarDefaultViewMode" is="emby-select">
+                                    <option value="auto">Auto (mobile agenda, desktop month)</option>
+                                    <option value="month">Month</option>
+                                    <option value="week">Week</option>
+                                    <option value="agenda">Agenda</option>
+                                </select>
+                            </div>
                             <div class="checkboxContainer" style="margin-top: 1.5em; margin-bottom: 0.5em !important;">
                                 <label>
                                     <input id="calendarHighlightFavorites" is="emby-checkbox" type="checkbox"/>
@@ -1782,6 +1791,7 @@
                 document.querySelector('#calendarUsePluginPages').checked = config.CalendarUsePluginPages !== false;
                 document.querySelector('#calendarFirstDayOfWeek').value = config.CalendarFirstDayOfWeek || 'Monday';
                 document.querySelector('#calendarTimeFormat').value = config.CalendarTimeFormat || '5pm/5:30pm';
+                document.querySelector('#calendarDefaultViewMode').value = config.CalendarDefaultViewMode || 'auto';
                 document.querySelector('#calendarHighlightFavorites').checked = config.CalendarHighlightFavorites || false;
                 document.querySelector('#calendarHighlightWatchedSeries').checked = config.CalendarHighlightWatchedSeries || false;
 
@@ -1928,6 +1938,7 @@
             config.CalendarUsePluginPages = document.querySelector('#calendarUsePluginPages').checked;
             config.CalendarFirstDayOfWeek = document.querySelector('#calendarFirstDayOfWeek').value || 'Monday';
             config.CalendarTimeFormat = document.querySelector('#calendarTimeFormat').value || '5pm/5:30pm';
+            config.CalendarDefaultViewMode = document.querySelector('#calendarDefaultViewMode').value || 'auto';
             config.CalendarHighlightFavorites = document.querySelector('#calendarHighlightFavorites').checked;
             config.CalendarHighlightWatchedSeries = document.querySelector('#calendarHighlightWatchedSeries').checked;
 

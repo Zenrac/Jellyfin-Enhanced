@@ -571,7 +571,13 @@
       return viewMatch[1];
     }
 
-    // Default to agenda on mobile, month on desktop
+    const config = JE.pluginConfig || {};
+    const configuredDefault = (config.CalendarDefaultViewMode || "auto").toLowerCase();
+    if (configuredDefault === "month" || configuredDefault === "week" || configuredDefault === "agenda") {
+      return configuredDefault;
+    }
+
+    // Auto: default to agenda on mobile, month on desktop
     const isMobile = window.innerWidth <= 768;
     return isMobile ? "agenda" : "month";
   }
