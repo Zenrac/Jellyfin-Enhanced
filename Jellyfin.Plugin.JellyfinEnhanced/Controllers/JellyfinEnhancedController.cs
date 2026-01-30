@@ -29,6 +29,8 @@ using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model;
 using MediaBrowser.Controller.Persistence;
 using Jellyfin.Plugin.JellyfinEnhanced.Model.Arr;
+using Jellyfin.Database.Implementations;
+using Microsoft.EntityFrameworkCore;
 using Jellyfin.Plugin.JellyfinEnhanced.Extensions;
 
 namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
@@ -45,6 +47,9 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
         private readonly IDtoService _dtoService;
         private readonly UserConfigurationManager _userConfigurationManager;
         private readonly IItemRepository _itemRepository;
+
+        private readonly IDbContextFactory<JellyfinDbContext> _dbContextFactory;
+
         private static readonly HashSet<string> BrandingFileNames = new(new[]
         {
             "icon-transparent.png",
@@ -62,7 +67,8 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
             ILibraryManager libraryManager, 
             IDtoService dtoService, 
             UserConfigurationManager userConfigurationManager,
-            IItemRepository itemRepository)
+            IItemRepository itemRepository,
+            IDbContextFactory<JellyfinDbContext> dbContextFactory)
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
@@ -72,6 +78,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
             _dtoService = dtoService;
             _userConfigurationManager = userConfigurationManager;
             _itemRepository = itemRepository;
+            _dbContextFactory = dbContextFactory;
         }
 
         private async Task<JellyseerrUser?> GetJellyseerrUser(string jellyfinUserId)
@@ -2660,7 +2667,31 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
                 }
             }
 
-            return Ok(new { events = events });
+            var providerKeys = events
+                .SelectMany(e =>
+                {
+                    var list = new List<(string, string)>();
+                    if (e.TvdbId.HasValue) list.Add(("Tvdb", e.TvdbId.Value.ToString()));
+                    if (e.TmdbId.HasValue) list.Add(("Tmdb", e.TmdbId.Value.ToString()));
+                    if (!string.IsNullOrWhiteSpace(e.ImdbId)) list.Add(("Imdb", e.ImdbId));
+                    return list;
+                })
+                .Distinct()
+                .ToList();
+
+            var itemMap = await _dbContextFactory.GetItemIdsByProvidersBatchAsync(providerKeys);
+
+            foreach (var evt in events)
+            {
+                var providers = new List<(string Provider, string Value)>();
+                if (evt.TvdbId.HasValue) providers.Add(("Tvdb", evt.TvdbId.Value.ToString()));
+                if (evt.TmdbId.HasValue) providers.Add(("Tmdb", evt.TmdbId.Value.ToString()));
+                if (!string.IsNullOrWhiteSpace(evt.ImdbId)) providers.Add(("Imdb", evt.ImdbId));
+
+                evt.ItemId = ItemIdHelper.GetBestItemId(providers, itemMap);
+            }
+
+            return Ok(new { events });
         }
 
         /// <summary>
@@ -3008,6 +3039,46 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
 
             return Ok(itemIds.FirstOrDefault());
         }
+
+        /// <summary>
+        /// Retrieves the first matching item ID for each set of provider IDs in the input list.
+        /// Each dictionary represents a set of providers (e.g., "Imdb", "Tvdb", "Tmdb") for which the repository will be queried.
+        /// </summary>
+        /// <param name="providerSets">A list of dictionaries, each containing provider names and their corresponding IDs. Keys are case-insensitive.</param>
+        /// <returns>A list of nullable GUIDs, one for each provider set. If no item matches a set, the corresponding entry is null.</returns>
+        [Authorize]
+        [HttpPost("items/by-providers-lists")]
+        public async Task<ActionResult<List<Guid?>>> GetItemIdsByProvidersListsWithScoreAsync(
+            [FromBody] List<Dictionary<string, string>> providerSets,
+            CancellationToken ct)
+        {
+            var results = new List<Guid?>();
+
+            var providerKeys = providerSets
+                .Where(ps => ps != null)
+                .SelectMany(ps => ps.Select(kv => (Provider: kv.Key, Value: kv.Value)))
+                .ToList();
+
+            var itemMap = await _dbContextFactory.GetItemIdsByProvidersBatchAsync(providerKeys, ct);
+
+            foreach (var providers in providerSets)
+            {
+                if (providers == null || providers.Count == 0)
+                {
+                    results.Add(null);
+                    continue;
+                }
+
+                var providerList = providers.Select(kv => (kv.Key, kv.Value));
+
+                var bestMatch = ItemIdHelper.GetBestItemId(providerList, itemMap);
+
+                results.Add(bestMatch);
+            }
+
+            return results;
+        }
+
 
         [Authorize]
         [HttpGet("{viewName}")]
