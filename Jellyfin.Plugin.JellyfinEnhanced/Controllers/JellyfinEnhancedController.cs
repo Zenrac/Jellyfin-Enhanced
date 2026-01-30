@@ -2668,14 +2668,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
             }
 
             var providerKeys = events
-                .SelectMany(e =>
-                {
-                    var list = new List<(string, string)>();
-                    if (e.TvdbId.HasValue) list.Add(("Tvdb", e.TvdbId.Value.ToString()));
-                    if (e.TmdbId.HasValue) list.Add(("Tmdb", e.TmdbId.Value.ToString()));
-                    if (!string.IsNullOrWhiteSpace(e.ImdbId)) list.Add(("Imdb", e.ImdbId));
-                    return list;
-                })
+                .SelectMany(ProviderHelper.GetProviders)
                 .Distinct()
                 .ToList();
 
@@ -2683,17 +2676,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
 
             foreach (var evt in events)
             {
-                var providers = new List<(string Provider, string Value)>();
-
-                var tvdb = evt.EpisodeTvdbId?.ToString() ?? evt.TvdbId?.ToString();
-                var tmdb = evt.TmdbId?.ToString();
-                var imdb = !string.IsNullOrWhiteSpace(evt.EpisodeImdbId) ? evt.EpisodeImdbId : evt.ImdbId;
-
-                if (tvdb != null) providers.Add(("Tvdb", tvdb));
-                if (tmdb != null) providers.Add(("Tmdb", tmdb));
-                if (!string.IsNullOrWhiteSpace(imdb)) providers.Add(("Imdb", imdb));
-
-                evt.ItemId = ItemIdHelper.GetBestItemId(providers, itemMap);
+                evt.ItemId = ProviderHelper.GetBestItemId(ProviderHelper.GetProviders(evt), itemMap);
             }
 
             return Ok(new { events });
@@ -3075,7 +3058,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
 
                 var providerList = providers.Select(kv => (kv.Key, kv.Value));
 
-                var bestMatch = ItemIdHelper.GetBestItemId(providerList, itemMap);
+                var bestMatch = ProviderHelper.GetBestItemId(providerList, itemMap);
 
                 results.Add(bestMatch);
             }

@@ -1,6 +1,8 @@
+using Jellyfin.Plugin.JellyfinEnhanced.Model.Arr;
+
 namespace Jellyfin.Plugin.JellyfinEnhanced.Helpers
 {
-    public static class ItemIdHelper
+    public static class ProviderHelper
     {
         /// <summary>
         /// Returns the ItemId with the highest score based on how many provider IDs match.
@@ -27,6 +29,22 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Helpers
                 return null;
 
             return scoreMap.MaxBy(kv => kv.Value).Key;
+        }
+
+        public static List<(string Provider, string Value)> GetProviders(ArrItem e)
+        {
+            var providers = new List<(string, string)>();
+
+            var tvdb = e.EpisodeTvdbId?.ToString() ?? e.TvdbId?.ToString();
+            if (tvdb != null) providers.Add(("Tvdb", tvdb));
+
+            var tmdb = e.TmdbId?.ToString();
+            if (tmdb != null) providers.Add(("Tmdb", tmdb));
+
+            var imdb = !string.IsNullOrWhiteSpace(e.EpisodeImdbId) ? e.EpisodeImdbId : e.ImdbId;
+            if (!string.IsNullOrWhiteSpace(imdb)) providers.Add(("Imdb", imdb));
+
+            return providers;
         }
     }
 }
