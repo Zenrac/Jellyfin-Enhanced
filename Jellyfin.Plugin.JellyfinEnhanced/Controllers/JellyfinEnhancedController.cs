@@ -3049,8 +3049,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
         [Authorize]
         [HttpPost("items/by-providers-lists")]
         public async Task<ActionResult<List<Guid?>>> GetItemIdsByProvidersListsWithScoreAsync(
-            [FromBody] List<Dictionary<string, string>> providerSets,
-            CancellationToken ct)
+            [FromBody] List<Dictionary<string, string>> providerSets)
         {
             var results = new List<Guid?>();
 
@@ -3059,7 +3058,7 @@ namespace Jellyfin.Plugin.JellyfinEnhanced.Controllers
                 .SelectMany(ps => ps.Select(kv => (Provider: kv.Key, Value: kv.Value)))
                 .ToList();
 
-            var itemMap = await _dbContextFactory.GetItemIdsByProvidersBatchAsync(providerKeys, ct);
+            var itemMap = await _dbContextFactory.GetItemIdsByProvidersBatchAsync(providerKeys, HttpContext.RequestAborted);
 
             foreach (var providers in providerSets)
             {
